@@ -1,0 +1,5 @@
+"use client";
+import { useActionState, useEffect, useState } from "react";
+import { login } from "./actions";
+
+export function LoginForm(){const [state,action,pending]=useActionState(login,null);const [next,setNext]=useState("/");useEffect(()=>{setNext(new URLSearchParams(window.location.search).get("next")??"/")},[]);return <form action={action} className="login-form"><input type="hidden" name="next" value={next}/><div className="eyebrow">CỔNG THÔNG TIN LỚP</div><h2>Chào mừng trở lại</h2><p>Đăng nhập để xem thông tin nội bộ của DA26TTNT.</p>{state?.error&&<div className="error" role="alert">{state.error}</div>}<label htmlFor="email">Email</label><input className="field" id="email" name="email" type="email" autoComplete="email" required/><label htmlFor="password">Mật khẩu</label><input className="field" id="password" name="password" type="password" autoComplete="current-password" minLength={8} required/><button className="btn btn-primary" disabled={pending}>{pending?"Đang đăng nhập...":"Đăng nhập"}</button></form>}

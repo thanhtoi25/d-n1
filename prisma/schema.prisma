@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model User {
+  id              String             @id @default(cuid())
+  email           String             @unique
+  passwordHash    String?
+  displayName     String
+  role            Role               @default(MEMBER)
+  status          AccountStatus      @default(INVITED)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  inviteTokenHash String?            @unique
+  inviteExpiresAt DateTime?
+  announcements   Announcement[]
+  reads           AnnouncementRead[]
+  auditLogs       AuditLog[]         @relation("AuditActor")
+  member          Member?
+  sessions        Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Member {
+  id          String          @id @default(cuid())
+  studentCode String?         @unique
+  fullName    String
+  searchName  String
+  avatarUrl   String?
+  publicEmail String?
+  publicPhone String?
+  bio         String?
+  birthDate       String?
+  residence       String?
+  score           Float?
+  attendanceScore Float?
+  rewardScore     Float?
+  grades          SubjectGrade[]
+  userId      String?         @unique
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  positions   ClassPosition[]
+  user        User?           @relation(fields: [userId], references: [id])
+
+  @@index([fullName])
+  @@index([searchName])
+}
+
+model ClassPosition {
+  id          String   @id @default(cuid())
+  title       String
+  duties      String?
+  publicEmail String?
+  memberId    String
+  createdAt   DateTime @default(now())
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, title])
+  @@index([memberId])
+}
+
+model Advisor {
+  id           String   @id @default(cuid())
+  fullName     String?
+  title        String?
+  department   String?
+  introduction String?
+  avatarUrl    String?
+  publicEmail  String?
+  publicPhone  String?
+  officeHours  String?
+  updatedAt    DateTime @updatedAt
+}
+
+model Announcement {
+  id          String             @id @default(cuid())
+  title       String
+  slug        String             @unique
+  summary     String?
+  content     String
+  category    String
+  importance  Importance         @default(NORMAL)
+  status      AnnouncementStatus @default(DRAFT)
+  pinned      Boolean            @default(false)
+  isPublic    Boolean            @default(false)
+  deadline    DateTime?
+  publishedAt DateTime?
+  authorId    String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  author      User               @relation(fields: [authorId], references: [id])
+  reads       AnnouncementRead[]
+  attachments Attachment[]
+
+  @@index([status, publishedAt])
+  @@index([pinned])
+}
+
+model Attachment {
+  id             String       @id @default(cuid())
+  announcementId String
+  originalName   String
+  storageKey     String       @unique
+  mimeType       String
+  size           Int
+  createdAt      DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+}
+
+model AnnouncementRead {
+  userId         String
+  announcementId String
+  readAt         DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, announcementId])
+}
+
+model ImportJob {
+  id          String   @id @default(cuid())
+  fileName    String
+  status      String
+  totalRows   Int      @default(0)
+  successRows Int      @default(0)
+  errorRows   Int      @default(0)
+  report      Json?
+  createdById String
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  actor     User?    @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([createdAt])
+}
+
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+}
+
+enum Role {
+  MEMBER
+  CLASS_OFFICER
+  ADMIN
+}
+
+enum AccountStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Importance {
+  NORMAL
+  IMPORTANT
+  URGENT
+}
+
+model SubjectGrade {
+  id          String   @id @default(cuid())
+  memberId    String
+  subjectCode String
+  groupCode   String?
+  subjectName String
+  credits     Int
+  l1          String?
+  l2          String?
+  t3          String?
+  final10     String?
+  updatedAt   DateTime @updatedAt
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, subjectCode])
+}
